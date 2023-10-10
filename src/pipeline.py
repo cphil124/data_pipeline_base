@@ -28,6 +28,9 @@ class PipelineStep(Protocol[DataContext]):
 
 
 class Pipeline(Generic[DataContext]):
+    """
+    Holds the Pipeline Steps in their full and complete order
+    """
     def __init__(self, *steps: PipelineStep):
         self.queue = [step for step in steps]
 
@@ -35,13 +38,31 @@ class Pipeline(Generic[DataContext]):
         self.queue.append(step)
 
     def __call__(self, data_context: DataContext) -> None:
-        # Execute steps
-        pass
+        execute = PipelineCursor(self.queue)
+
+        return execute(data_context)
 
     def __len__(self) -> int:
         return len(self.queue)
 
 
 class PipelineCursor(Generic[DataContext]):
-    def __init__(self): ...
+    """
+        Cursor object for orchestrating execution of Pipeline logic while also handling errors and tracking other meta-
+        data about a particular pipeline execution. Each instance stores the remaining pipeline steps to be executed
+        upon instantiation and takes in the data context as it's calling input
+    """
+    def __init__(self, steps: List[PipelineStep]):
+        self.queue = steps
+
+    def __call__(self, data_context: DataContext) -> None:
+        if not self.queue:
+            return
+        current_step = self.queue[0]  # first step remaining in queue is current step
+        next_step = PipelineCursor(self.queue[1:])  # remaining steps are separated to be passed to the next cursor
+                                                    # execution to proceed
+        current_step(data_context, next_step) # Current PipelineStep is executed with context and rest of Pipeline is passed as subsequent step
+
+
+
 
